@@ -1,0 +1,23 @@
+problem:
+  objective:
+    sense: max
+    coefficients: [5, 3]
+  constraints:
+    - coefficients: [1, 1]
+      sense: <=
+      rhs: 5
+    - coefficients: [15000, 10000]
+      sense: <=
+      rhs: 50000
+
+config:
+  is_integer: true
+  integer_indices: [0, 1]
+  max_nodes: 5000
+  use_rounding_heuristic: true
+  use_gomory_cuts: true
+  max_gomory_cuts_per_node: 1
+  visualize: true
+  visualization_output: outputs/problem_ip_vis_bnb.gif
+  visualization_fps: 1
+  visualization_grid_size: 180

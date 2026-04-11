@@ -1,0 +1,24 @@
+problem:
+  objective:
+    sense: max
+    coefficients: [9, 7, 5, 4, 6, 3]
+  constraints:
+    - coefficients: [1, 1, 1, 1, 1, 1]
+      sense: <=
+      rhs: 20
+    - coefficients: [2, 1, 0, 1, 2, 1]
+      sense: <=
+      rhs: 30
+    - coefficients: [1, 3, 2, 0, 1, 2]
+      sense: <=
+      rhs: 40
+    - coefficients: [0, 1, 2, 3, 1, 0]
+      sense: <=
+      rhs: 35
+
+config:
+  is_integer: true
+  integer_indices: [0, 1, 2, 3, 4, 5]
+  max_nodes: 8000
+  use_rounding_heuristic: true
+  rounding_max_repair_steps: 120

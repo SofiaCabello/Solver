@@ -1,0 +1,19 @@
+problem:
+  objective:
+    sense: max
+    coefficients: [3, 2]
+  constraints:
+    - coefficients: [2, 1]
+      sense: <=
+      rhs: 18
+    - coefficients: [2, 3]
+      sense: <=
+      rhs: 42
+    - coefficients: [3, 1]
+      sense: <=
+      rhs: 24
+
+config:
+  is_integer: false
+  lp_method: primal
+  epsilon: 1.0e-9

@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+
+# Python cache/build artifacts
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Generated outputs
+examples/outputs/
+
+# Ignore unit tests
+tests/

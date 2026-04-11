@@ -1,0 +1,22 @@
+problem:
+  objective:
+    sense: max
+    coefficients: [8, 6, 5, 4, 7, 3]
+  constraints:
+    - coefficients: [2, 1, 1, 3, 2, 1]
+      sense: <=
+      rhs: 120
+    - coefficients: [1, 3, 2, 1, 2, 2]
+      sense: <=
+      rhs: 150
+    - coefficients: [2, 2, 3, 1, 1, 2]
+      sense: <=
+      rhs: 160
+    - coefficients: [1, 1, 1, 1, 1, 1]
+      sense: <=
+      rhs: 60
+
+config:
+  is_integer: false
+  lp_method: primal
+  epsilon: 1.0e-9
