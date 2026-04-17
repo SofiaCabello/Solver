@@ -20,13 +20,28 @@ class LPSolver:
     def __init__(self, config: Optional[SolverConfig] = None) -> None:
         self.config = config or SolverConfig()
 
-    def solve(self, model: LPModel, method: str = "primal") -> LPSolution:
-        state = self._build_initial_state(model)
+    def solve(self, model: LPModel, method: str = "primal", objective_sense: str = "max") -> LPSolution:
+        sense = objective_sense.lower()
+        if sense not in ("max", "min"):
+            raise ValueError("objective_sense must be one of: max, min")
+
+        effective_model = model
+        sign = 1.0
+        if sense == "min":
+            sign = -1.0
+            effective_model = LPModel(c=-np.asarray(model.c, dtype=float), A=model.A, b=model.b)
+
+        state = self._build_initial_state(effective_model)
         if method == "primal":
-            return self._run_primal_simplex(state)
-        if method == "dual":
-            return self._run_dual_simplex(state)
-        raise ValueError("method must be one of: primal, dual")
+            result = self._run_primal_simplex(state)
+        elif method == "dual":
+            result = self._run_dual_simplex(state)
+        else:
+            raise ValueError("method must be one of: primal, dual")
+
+        if result.objective is not None:
+            result.objective = float(sign * result.objective)
+        return result
 
     def reoptimize_with_added_constraint(
         self,

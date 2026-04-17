@@ -19,5 +19,8 @@ config:
   max_gomory_cuts_per_node: 1
   visualize: true
   visualization_output: outputs/problem_ip_vis_bnb.gif
+  visualization_timeline_output: outputs/problem_ip_vis_timeline.png
+  visualization_generate_timeline: true
+  visualization_timeline_panels: 5
   visualization_fps: 1
   visualization_grid_size: 180

@@ -1,0 +1,48 @@
+problem:
+  objective:
+    sense: min
+    # C矩阵: A1(极贵), A2(极贵), A3(超级便宜)
+    coefficients: [20, 22, 18, 25, 21, 21, 19, 23, 20, 24, 5, 6, 4, 7, 5]
+  constraints:
+    # --- 任务分配约束 (每个任务 1 次) ---
+    - coefficients: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0] # Task 1
+      sense: ==
+      rhs: 1
+    - coefficients: [0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0] # Task 2
+      sense: ==
+      rhs: 1
+    - coefficients: [0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0] # Task 3
+      sense: ==
+      rhs: 1
+    - coefficients: [0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0] # Task 4
+      sense: ==
+      rhs: 1
+    - coefficients: [0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] # Task 5
+      sense: ==
+      rhs: 1
+    
+    # --- 容量约束 (极其紧凑的背包) ---
+    - coefficients: [5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] # Agent 1: Max 14
+      sense: <=
+      rhs: 14
+    - coefficients: [0, 0, 0, 0, 0, 6, 5, 8, 7, 9, 0, 0, 0, 0, 0] # Agent 2: Max 14
+      sense: <=
+      rhs: 14
+    - coefficients: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 6, 7, 8, 9]  # Agent 3: Max 10 (只能做1个任务!)
+      sense: <=
+      rhs: 10
+
+config:
+  is_integer: true
+  integer_indices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+  lp_method: primal
+  epsilon: 1.0e-9
+  max_iterations: 10000
+  max_nodes: 50000
+  diving_max_depth: 20
+  diving_max_tries: 2
+  use_rounding_heuristic: true   # 【核心测试1：先关掉】
+  rounding_max_repair_steps: 100
+  visualize: false
+  use_gomory_cuts: true          # 【核心测试2：也关掉】
+  max_gomory_cuts_per_node: 1

@@ -29,7 +29,25 @@ class BranchAndBoundSolver:
         self.config = config or SolverConfig()
         self.lp_solver = LPSolver(config=self.config)
 
-    def solve(self, model: IntegerModel) -> BnBResult:
+    def solve(self, model: IntegerModel, objective_sense: str = "max") -> BnBResult:
+        sense = objective_sense.lower()
+        if sense not in ("max", "min"):
+            raise ValueError("objective_sense must be one of: max, min")
+
+        if sense == "min":
+            transformed = IntegerModel(
+                c=-np.asarray(model.c, dtype=float),
+                A=np.asarray(model.A, dtype=float),
+                b=np.asarray(model.b, dtype=float),
+                integer_indices=list(model.integer_indices),
+            )
+            result = self.solve(transformed, objective_sense="max")
+            if result.objective is not None:
+                result.objective = -float(result.objective)
+            result.metadata = dict(result.metadata)
+            result.metadata["objective_sense"] = "min"
+            return result
+
         collect_trace = self.config.visualize and model.c.shape[0] == 2
         trace: List[Dict[str, Any]] = []
         branch_lines: List[Dict[str, Any]] = []
@@ -37,6 +55,11 @@ class BranchAndBoundSolver:
         gomory_cuts_added = 0
 
         root = self.lp_solver.solve(model, method="primal")
+        if root.status != "optimal" and np.any(np.asarray(model.b, dtype=float) < -self.config.epsilon):
+            dual_root = self.lp_solver.solve(model, method="dual")
+            if dual_root.status == "optimal":
+                root = dual_root
+
         if root.status != "optimal" or root.state is None or root.x is None:
             return BnBResult(
                 status="infeasible",
@@ -294,6 +317,7 @@ class BranchAndBoundSolver:
             incumbent_updates=incumbent_updates,
             metadata={
                 "max_nodes": self.config.max_nodes,
+                "objective_sense": "max",
                 "gomory_cuts_added": gomory_cuts_added,
                 "trace": trace,
                 "branch_lines": branch_lines,

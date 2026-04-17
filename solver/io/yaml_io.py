@@ -10,7 +10,7 @@ from solver.config import SolverConfig
 from solver.ip.branch_and_bound import BranchAndBoundSolver
 from solver.lp.simplex import LPSolver
 from solver.models import IntegerModel, LPModel
-from solver.visualization import render_bnb_animation
+from solver.visualization import render_bnb_animation, render_bnb_timeline_figure
 
 
 def load_problem_from_yaml(
@@ -26,8 +26,9 @@ def load_problem_from_yaml(
     if not isinstance(problem, dict):
         raise ValueError("Missing required 'problem' mapping.")
 
-    c, A, b = _parse_problem(problem)
+    c, A, b, objective_sense = _parse_problem(problem)
     runtime = _parse_runtime(payload.get("config"))
+    runtime["objective_sense"] = objective_sense
     solver_config = _build_solver_config(runtime)
 
     is_integer = bool(runtime.get("is_integer", False))
@@ -44,9 +45,10 @@ def load_problem_from_yaml(
 
 def solve_from_yaml(file_path: str) -> Dict[str, Any]:
     model, solver_config, runtime = load_problem_from_yaml(file_path)
+    objective_sense = str(runtime.get("objective_sense", "max")).lower()
     if isinstance(model, IntegerModel):
         solver = BranchAndBoundSolver(config=solver_config)
-        result = solver.solve(model)
+        result = solver.solve(model, objective_sense=objective_sense)
         clean_x = None if result.x is None else _clean_vector(result.x.tolist(), solver_config.epsilon)
         clean_obj = None if result.objective is None else _clean_number(result.objective, solver_config.epsilon)
         output = {
@@ -59,6 +61,7 @@ def solve_from_yaml(file_path: str) -> Dict[str, Any]:
             "message": result.message,
             "metadata": result.metadata,
             "solver_config": asdict(solver_config),
+            "objective_sense": objective_sense,
         }
 
         if solver_config.visualize:
@@ -72,8 +75,10 @@ def solve_from_yaml(file_path: str) -> Dict[str, Any]:
         return output
 
     lp_method = runtime.get("lp_method", "primal")
+    if lp_method == "primal" and any(float(v) < -solver_config.epsilon for v in model.b):
+        lp_method = "dual"
     solver = LPSolver(config=solver_config)
-    result = solver.solve(model, method=lp_method)
+    result = solver.solve(model, method=lp_method, objective_sense=objective_sense)
     clean_x = None if result.x is None else _clean_vector(result.x.tolist(), solver_config.epsilon)
     clean_obj = None if result.objective is None else _clean_number(result.objective, solver_config.epsilon)
     output = {
@@ -85,11 +90,12 @@ def solve_from_yaml(file_path: str) -> Dict[str, Any]:
         "message": result.message,
         "solver_config": asdict(solver_config),
         "lp_method": lp_method,
+        "objective_sense": objective_sense,
     }
     return output
 
 
-def _parse_problem(problem: Dict[str, Any]) -> Tuple[List[float], List[List[float]], List[float]]:
+def _parse_problem(problem: Dict[str, Any]) -> Tuple[List[float], List[List[float]], List[float], str]:
     if "objective" in problem:
         return _parse_structured_problem(problem)
 
@@ -103,10 +109,18 @@ def _parse_problem(problem: Dict[str, Any]) -> Tuple[List[float], List[List[floa
     b = problem.get("b")
     if c is None or A is None or b is None:
         raise ValueError("Problem must define either objective/constraints or c/A/b.")
-    return _as_float_list(c, "problem.c"), _as_float_matrix(A, "problem.A"), _as_float_list(b, "problem.b")
+    compact_sense = str(problem.get("sense", "max")).lower()
+    if compact_sense not in ("max", "min"):
+        raise ValueError("problem.sense must be one of: max, min")
+    return (
+        _as_float_list(c, "problem.c"),
+        _as_float_matrix(A, "problem.A"),
+        _as_float_list(b, "problem.b"),
+        compact_sense,
+    )
 
 
-def _parse_structured_problem(problem: Dict[str, Any]) -> Tuple[List[float], List[List[float]], List[float]]:
+def _parse_structured_problem(problem: Dict[str, Any]) -> Tuple[List[float], List[List[float]], List[float], str]:
     objective = problem.get("objective")
     constraints = problem.get("constraints")
 
@@ -116,8 +130,8 @@ def _parse_structured_problem(problem: Dict[str, Any]) -> Tuple[List[float], Lis
         raise ValueError("problem.constraints must be a non-empty list.")
 
     sense = str(objective.get("sense", "max")).lower()
-    if sense != "max":
-        raise ValueError("Only objective sense 'max' is supported currently.")
+    if sense not in ("max", "min"):
+        raise ValueError("problem.objective.sense must be one of: max, min")
 
     c = _as_float_list(objective.get("coefficients"), "problem.objective.coefficients")
     n = len(c)
@@ -128,8 +142,8 @@ def _parse_structured_problem(problem: Dict[str, Any]) -> Tuple[List[float], Lis
         if not isinstance(row, dict):
             raise ValueError(f"problem.constraints[{i}] must be a mapping.")
         row_sense = str(row.get("sense", "<=")).strip()
-        if row_sense != "<=":
-            raise ValueError("Only constraint sense '<=' is supported currently.")
+        if row_sense not in ("<=", ">=", "==", "="):
+            raise ValueError("Constraint sense must be one of: <=, >=, ==")
 
         coeff = _as_float_list(row.get("coefficients"), f"problem.constraints[{i}].coefficients")
         if len(coeff) != n:
@@ -137,10 +151,20 @@ def _parse_structured_problem(problem: Dict[str, Any]) -> Tuple[List[float], Lis
                 f"Constraint {i} coefficient length mismatch: expected {n}, got {len(coeff)}."
             )
         rhs = float(row.get("rhs"))
-        A.append(coeff)
-        b.append(rhs)
 
-    return c, A, b
+        if row_sense == "<=":
+            A.append(coeff)
+            b.append(rhs)
+        elif row_sense == ">=":
+            A.append([-v for v in coeff])
+            b.append(-rhs)
+        else:
+            A.append(coeff)
+            b.append(rhs)
+            A.append([-v for v in coeff])
+            b.append(-rhs)
+
+    return c, A, b, sense
 
 
 def _parse_runtime(config_payload: Any) -> Dict[str, Any]:
@@ -185,6 +209,9 @@ def _parse_runtime(config_payload: Any) -> Dict[str, Any]:
         "use_gomory_cuts",
         "max_gomory_cuts_per_node",
         "visualization_output",
+        "visualization_timeline_output",
+        "visualization_generate_timeline",
+        "visualization_timeline_panels",
         "visualization_fps",
         "visualization_grid_size",
         "max_trace_nodes",
@@ -219,6 +246,12 @@ def _build_solver_config(runtime: Dict[str, Any]) -> SolverConfig:
         kwargs["visualize"] = bool(runtime["visualize"])
     if "visualization_output" in runtime:
         kwargs["visualization_output"] = str(runtime["visualization_output"])
+    if "visualization_timeline_output" in runtime:
+        kwargs["visualization_timeline_output"] = str(runtime["visualization_timeline_output"])
+    if "visualization_generate_timeline" in runtime:
+        kwargs["visualization_generate_timeline"] = bool(runtime["visualization_generate_timeline"])
+    if "visualization_timeline_panels" in runtime:
+        kwargs["visualization_timeline_panels"] = int(runtime["visualization_timeline_panels"])
     if "visualization_fps" in runtime:
         kwargs["visualization_fps"] = int(runtime["visualization_fps"])
     if "visualization_grid_size" in runtime:
@@ -291,6 +324,10 @@ def _build_visualization_output(
         }
 
     output_path = _resolve_visualization_output_path(yaml_path, solver_config.visualization_output)
+    timeline_output_path = _resolve_visualization_output_path(
+        yaml_path,
+        solver_config.visualization_timeline_output,
+    )
     try:
         saved = render_bnb_animation(
             c=model.c.tolist(),
@@ -307,9 +344,27 @@ def _build_visualization_output(
             grid_size=solver_config.visualization_grid_size,
             epsilon=solver_config.epsilon,
         )
+        timeline_saved = None
+        if solver_config.visualization_generate_timeline:
+            timeline_saved = render_bnb_timeline_figure(
+                c=model.c.tolist(),
+                A=model.A.tolist(),
+                b=model.b.tolist(),
+                trace=trace,
+                branch_lines=branch_lines,
+                gomory_lines=gomory_lines,
+                incumbent_constraints=incumbent_constraints,
+                incumbent_gomory_constraints=incumbent_gomory_constraints,
+                incumbent_x=clean_x,
+                output_path=timeline_output_path,
+                panel_count=solver_config.visualization_timeline_panels,
+                grid_size=solver_config.visualization_grid_size,
+                epsilon=solver_config.epsilon,
+            )
         return {
             "enabled": True,
             "output_file": saved,
+            "timeline_output_file": timeline_saved,
             "frames": len(trace),
         }
     except Exception as exc:

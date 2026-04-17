@@ -12,6 +12,9 @@ class SolverConfig:
     rounding_max_repair_steps: int = 100
     visualize: bool = False
     visualization_output: str = "outputs/bnb_animation.gif"
+    visualization_timeline_output: str = "outputs/bnb_timeline.png"
+    visualization_generate_timeline: bool = True
+    visualization_timeline_panels: int = 6
     visualization_fps: int = 2
     visualization_grid_size: int = 160
     max_trace_nodes: int = 8_000
