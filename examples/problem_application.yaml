@@ -3,7 +3,6 @@ problem:
     sense: max
     coefficients: [5, 5, 5, 8, 8, 8]
   constraints:
-    # 1. 每月工时约束 (Month 1, 2, 3 Labor limits)
     - coefficients: [20, 0, 0, 35, 0, 0]
       sense: <=
       rhs: 800
@@ -13,13 +12,9 @@ problem:
     - coefficients: [0, 0, 20, 0, 0, 35]
       sense: <=
       rhs: 800
-      
-    # 2. 核心零部件总数约束 (Total controllers available)
     - coefficients: [1, 1, 1, 1, 1, 1]
       sense: <=
       rhs: 100
-      
-    # 3. 每月标准型需求上限 (Standard arm max monthly demand)
     - coefficients: [1, 0, 0, 0, 0, 0]
       sense: <=
       rhs: 30
@@ -29,8 +24,6 @@ problem:
     - coefficients: [0, 0, 1, 0, 0, 0]
       sense: <=
       rhs: 30
-      
-    # 4. 每月高级型需求上限 (Advanced arm max monthly demand)
     - coefficients: [0, 0, 0, 1, 0, 0]
       sense: <=
       rhs: 20
@@ -48,7 +41,7 @@ config:
   use_rounding_heuristic: true
   use_gomory_cuts: true
   max_gomory_cuts_per_node: 3
-  visualize: false # 建议关闭，6维空间无法生成2D可视化 GIF
+  visualize: false
   visualization_output: outputs/problem_ip_vis_bnb.gif
   visualization_timeline_output: outputs/problem_ip_vis_timeline.png
   visualization_generate_timeline: false

@@ -1,145 +1,149 @@
-# Solver: LP/IP Optimization Engine in Python
+# Solver: LP/IP Optimization Engine
 
-This project implements a lightweight and extensible LP/IP solver with YAML-driven input, branch-and-bound, Gomory fractional cuts, and optional 2D search visualization.
+A practical LP/IP solver with YAML-first workflows, exact optimization, and visual analytics.
 
-## Features
+| Branch-and-Bound Animation | Paper-Ready Timeline |
+|---|---|
+| ![B&B GIF](img/problem_ip_vis_bnb.gif) | ![Timeline](img/problem_ip_vis_timeline.png) |
 
-### LP (Linear Programming)
+## Why This Repo
 
-- Primal Simplex
-- Dual Simplex (warm-start re-optimization)
-- Objective sense support: max and min
-- Epsilon-based floating-point tolerance handling
-- Basis operations utility:
-  - Inverse solve (baseline)
-  - LU solve (stability-oriented path)
+- YAML-first modeling: define objective and constraints once, run directly.
+- Exact IP solving: branch-and-bound + Gomory fractional cuts + heuristics.
+- Visual explainability: GIF animation and left-to-right timeline figure for papers.
+- Built-in baselines: Genetic Algorithm and Greedy solvers for comparison.
 
-### IP (Integer Programming)
+## Recommended Workflow (Primary)
 
-- Branch and Bound (DFS node strategy)
-- Objective sense support: max and min
-- Primal heuristics:
-  - Rounding heuristic
-  - Diving heuristic
-- Gomory Fractional Cut (current implementation targets pure-integer models)
-- Genetic Algorithm baseline solver (for comparison/control experiments)
-- Greedy baseline solver with exploration-step accounting
+Use solve_yaml.py as the default entrypoint.
 
-### Visualization (2D IP only)
+```bash
+python examples/solve_yaml.py <your_problem.yaml>
+```
 
-When enabled, the solver stores traversal history and renders a GIF animation including:
+This is the fastest way to:
 
-- Node-by-node branch-and-bound traversal
-- Branch constraints
-- Gomory cut planes (x1-x2 projection)
-- Final feasible region overlay
-- Final incumbent marker
-- Paper-style timeline figure (left-to-right temporal panels)
+- parse model + config from YAML,
+- solve LP/IP with the exact solver,
+- optionally generate visualization artifacts.
 
-## Requirements
+## Environment Setup
+
+### 1. Python
 
 - Python 3.9+
-- Dependencies listed in requirements.txt
 
-Install:
+### 2. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Quick Start
+## Run Cases
 
-```python
-from solver import LPModel, IntegerModel, LPSolver, BranchAndBoundSolver
-
-lp = LPModel(
-    c=[3, 2],
-    A=[
-        [2, 1],
-        [2, 3],
-        [3, 1],
-    ],
-    b=[18, 42, 24],
-)
-lp_result = LPSolver().solve(lp, method="primal")
-print(lp_result.status, lp_result.objective, lp_result.x)
-
-ip = IntegerModel(
-    c=lp.c,
-    A=lp.A,
-    b=lp.b,
-    integer_indices=[0, 1],
-)
-ip_result = BranchAndBoundSolver().solve(ip)
-print(ip_result.status, ip_result.objective, ip_result.x)
-```
-
-## YAML I/O
-
-Solve from YAML:
+### A. Basic LP
 
 ```bash
 python examples/solve_yaml.py examples/problem_lp.yaml
+```
+
+What it demonstrates:
+
+- LP max objective,
+- standard <= constraints,
+- primal simplex default flow.
+
+### B. Basic IP
+
+```bash
 python examples/solve_yaml.py examples/problem_ip.yaml
+```
+
+What it demonstrates:
+
+- integer optimization,
+- branch-and-bound,
+- rounding/diving heuristics.
+
+### C. 6-variable LP
+
+```bash
 python examples/solve_yaml.py examples/problem_lp_6vars.yaml
+```
+
+What it demonstrates:
+
+- medium-size LP input,
+- YAML scalability beyond toy 2-variable examples.
+
+### D. 6-variable IP
+
+```bash
 python examples/solve_yaml.py examples/problem_ip_6vars.yaml
 ```
 
-GA baseline solve from YAML:
+What it demonstrates:
+
+- medium-size integer model,
+- exact solve behavior under larger combinatorial space.
+
+### E. Visualization Demo (2-variable IP)
 
 ```bash
-python examples/solve_yaml_ga.py examples/problem_ip_stress_test.yaml
+python examples/solve_yaml.py examples/problem_ip_vis.yaml
 ```
 
-Greedy baseline solve from YAML:
+What it demonstrates:
+
+- GIF traversal output,
+- timeline figure output,
+- branch lines + Gomory cut projection + final feasible region.
+
+Default outputs:
+
+- examples/outputs/problem_ip_vis_bnb.gif
+- examples/outputs/problem_ip_vis_timeline.png
+
+### F. Stress Test (min objective, equality constraints)
 
 ```bash
-python examples/solve_yaml_greedy.py examples/problem_ip_stress_test.yaml
+python examples/solve_yaml.py examples/problem_ip_stress_test.yaml
 ```
 
-Exact vs GA comparison on the same problem:
+What it demonstrates:
 
-```bash
-python examples/compare_exact_vs_ga.py examples/problem_ip_stress_test.yaml
-```
+- minimization objective,
+- equality constraints normalized internally,
+- exact IP solve on assignment-like structure.
 
-Exact vs GA vs Greedy comparison:
+## YAML Model Format
 
-```bash
-python examples/compare_exact_ga_greedy.py examples/problem_ip_stress_test.yaml
-```
-
-Prepared benchmark/problem files:
-
-- examples/problem_lp_6vars.yaml
-- examples/problem_ip_6vars.yaml
-- examples/problem_ip_vis.yaml
-
-### YAML Schema (structured)
+### Structured format (recommended)
 
 ```yaml
 problem:
   objective:
-    sense: max  # max or min
+    sense: max          # max or min
     coefficients: [3, 2]
   constraints:
     - coefficients: [2, 1]
-      sense: <=   # <=, >=, ==
+      sense: <=         # <=, >=, ==
       rhs: 18
 
 config:
   is_integer: false
   integer_indices: [0, 1]
-  lp_method: primal         # primal or dual
+  lp_method: primal     # primal or dual
   epsilon: 1.0e-9
   max_iterations: 10000
   max_nodes: 50000
-  diving_max_depth: 20
-  diving_max_tries: 2
+
   use_rounding_heuristic: true
   rounding_max_repair_steps: 100
+
   use_gomory_cuts: true
   max_gomory_cuts_per_node: 1
+
   visualize: false
   visualization_output: outputs/bnb_animation.gif
   visualization_timeline_output: outputs/bnb_timeline.png
@@ -150,7 +154,7 @@ config:
   max_trace_nodes: 8000
 ```
 
-### YAML Schema (compact)
+### Compact format
 
 ```yaml
 problem:
@@ -159,55 +163,61 @@ problem:
     - [1, 1]
     - [15000, 10000]
   b: [5, 50000]
+  sense: max
+
 config:
   is_integer: true
   integer_indices: [0, 1]
 ```
 
-## Visualization Usage
+## Optional Baselines
+
+### Genetic Algorithm baseline
 
 ```bash
-python examples/solve_yaml.py examples/problem_ip_vis.yaml
+python examples/solve_yaml_ga.py examples/problem_ip_stress_test.yaml
 ```
 
-Default output file:
-
-- examples/outputs/problem_ip_vis_bnb.gif
-- examples/outputs/problem_ip_vis_timeline.png
-
-Note:
-
-- Visualization is supported only when IP has exactly 2 decision variables.
-- Gomory lines are shown as x1-x2 projection. Some high-dimensional cuts may appear weak in 2D view if they mainly act on slack/extended tableau variables.
-- For minimization models, solver uses equivalent transformed maximization internally and maps objective back.
-- When visualization_generate_timeline is true, solver emits a static paper-ready timeline figure with panels ordered left-to-right by step index.
-
-## Run Tests
+### Greedy baseline (with exploration cost logs)
 
 ```bash
-python -m unittest discover -s tests -p "test_*.py"
+python examples/solve_yaml_greedy.py examples/problem_ip_stress_test.yaml
 ```
 
-## Current Scope
+### Compare exact vs GA
 
-- Canonical internal form: max c^T x, Ax <= b, x >= 0.
-- YAML parser accepts objective sense max/min and constraint senses <=, >=, == (normalized to internal <= form).
-- Branch constraints are appended and re-optimized by dual simplex.
-- Gomory fractional cuts are integrated for pure-integer models.
-- Mixed-integer Gomory cuts and richer cut families are future extension points.
+```bash
+python examples/compare_exact_vs_ga.py examples/problem_ip_stress_test.yaml
+```
 
-## GA Baseline Notes
+### Compare exact vs GA vs Greedy
 
-- GA solver currently targets integer models and uses penalty-based constraint handling.
-- Recommended for comparison experiments, stress tests, and heuristic benchmarking.
-- For deterministic reproduction, set ga_seed in YAML config or pass --seed to solve_yaml_ga.py.
+```bash
+python examples/compare_exact_ga_greedy.py examples/problem_ip_stress_test.yaml
+```
 
-## Greedy Baseline Notes
+## Technical Notes (Brief)
 
-- Greedy solver targets integer models and is intended as a fast control method.
-- It records exploration consumption in metadata:
-  - steps
-  - candidate_evaluations
-  - time_ms
-  - final_violation
-  - step_trace (step-by-step selection log)
+- LP engine:
+  - primal simplex,
+  - dual simplex for warm-start reoptimization.
+- IP engine:
+  - DFS branch-and-bound,
+  - rounding and diving heuristics,
+  - Gomory fractional cuts (pure-integer path).
+- Objective support:
+  - max and min (internally normalized to max when needed).
+- Constraint support in YAML:
+  - <=, >=, == (normalized to internal <= form).
+- Visualization scope:
+  - currently for 2-variable IP models,
+  - Gomory lines shown as x1-x2 projection.
+
+## Current Scope and Extension Direction
+
+- Canonical internal form: maximize c^T x with Ax <= b and x >= 0.
+- Strong baseline set already included: exact + GA + Greedy.
+- Future extension candidates:
+  - mixed-integer Gomory cuts,
+  - richer cut families,
+  - stronger primal heuristics and presolve.
