@@ -41,8 +41,8 @@ config:
   max_nodes: 50000
   diving_max_depth: 20
   diving_max_tries: 2
-  use_rounding_heuristic: true   # 【核心测试1：先关掉】
+  use_rounding_heuristic: true   
   rounding_max_repair_steps: 100
   visualize: false
-  use_gomory_cuts: true          # 【核心测试2：也关掉】
+  use_gomory_cuts: true          
   max_gomory_cuts_per_node: 1

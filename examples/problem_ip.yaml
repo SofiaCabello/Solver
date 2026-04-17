@@ -16,4 +16,5 @@ config:
   max_nodes: 5000
   diving_max_depth: 10
   use_rounding_heuristic: true
+  use_gomory_cuts: true
   rounding_max_repair_steps: 100
